@@ -1,17 +1,9 @@
-# Deriv API Lab — Economic Calendar Probe
+# Deriv API Lab v1.1
 
-Projeto independente, sem SPA e sem dependências externas.
+Corrige o parser do `economic_calendar`: a resposta usa `economic_calendar.events[]`.
 
-## Uso
-1. Extraia o ZIP.
-2. Abra `index.html`.
-3. Deixe o App ID `1089` para o primeiro teste.
-4. Use `EUR,USD` e um intervalo.
-5. Execute o teste.
-6. Baixe o JSON completo e envie-o junto com um screenshot.
+A versão 1.1 extrai os eventos corretamente e acrescenta contagens de impacto, primeiro/último evento, requests, responses, ciclo do WebSocket, erros e ambiente.
 
-O JSON inclui configuração, ambiente básico, ciclo de vida do WebSocket, requests, respostas, eventos, erros e timeouts.
+Uso: extraia o ZIP, abra `index.html`, mantenha App ID `1089`, use `EUR,USD`, escolha o intervalo, execute e baixe o JSON.
 
-Por segurança, não coleta cookies, localStorage/sessionStorage, tokens, Authorization headers ou credenciais.
-
-A estrutura foi pensada para receber novos probes da Deriv no futuro sem adicionar ferramentas de diagnóstico ao X-One.
+Não coleta tokens, cookies, storage, Authorization headers ou credenciais.

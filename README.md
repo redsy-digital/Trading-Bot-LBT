@@ -1,9 +1,22 @@
-# Deriv API Lab v1.1
+# X-One Forex Research Lab v1
 
-Corrige o parser do `economic_calendar`: a resposta usa `economic_calendar.events[]`.
+Laboratório independente, single-file, sem framework e sem execução de ordens.
 
-A versão 1.1 extrai os eventos corretamente e acrescenta contagens de impacto, primeiro/último evento, requests, responses, ciclo do WebSocket, erros e ambiente.
+## Objetivo
+Investigar hipóteses direcionais no EUR/USD usando candles históricos da Deriv, mantendo pesquisa separada do X-One operacional.
 
-Uso: extraia o ZIP, abra `index.html`, mantenha App ID `1089`, use `EUR,USD`, escolha o intervalo, execute e baixe o JSON.
+## Primeira hipótese
+ATR14/preço em percentil recente, com relação INVERSE: <=40% → CALL; >=60% → PUT; 40–60% → NONE. Estes thresholds são parâmetros experimentais, não evidência confirmada.
 
-Não coleta tokens, cookies, storage, Authorization headers ou credenciais.
+## Metodologia
+- M5/M15/M30/H1.
+- Horizontes +15/+30/+60/+120.
+- Split temporal treino/validação/holdout.
+- AUC, skill, IC95%, expectancy direcional e drawdown unitário.
+- Matriz 3D mantém a feature congelada entre células compatíveis.
+
+## Limitações
+O laboratório avalia direção pelo close futuro. Não modela payout, spread, slippage, execução, MFE/MAE ou caminho intrabar. Nenhum BUY é enviado.
+
+## Uso
+Abra `index.html` num navegador com internet, carregue candles e execute a hipótese. O WebSocket público da Deriv é usado apenas para dados históricos.

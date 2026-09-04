@@ -1,4 +1,4 @@
-# X-One Forex Research Lab v2
+# X-One Forex Research Lab v4
 
 Laboratório independente de pesquisa direcional para EUR/USD, sem execução de ordens.
 

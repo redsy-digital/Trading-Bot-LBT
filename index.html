@@ -5,38 +5,62 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#080b12">
   <title>X-One Research Lab</title>
-  <link rel="stylesheet" href="/frontend/styles.css">
+  <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
   <div class="shell">
     <header class="topbar">
-      <div class="brand"><div class="brand-mark">X</div><div><div class="brand-name">X-ONE <span>RESEARCH LAB</span></div><div class="brand-sub">TICK DATA • STATISTICS • BACKTEST</div></div></div>
-      <div class="status"><i></i><span id="apiStatus">A verificar API...</span></div>
+      <div class="brand"><div class="brand-mark">X</div><div><div class="brand-name">X-ONE <span>RESEARCH LAB</span></div><div class="brand-sub">DERIV TICKS • STATISTICS • BACKTEST</div></div></div>
+      <div class="status" id="status"><i></i><span id="apiStatus">A verificar API...</span></div>
     </header>
     <main>
       <section class="hero">
-        <div class="eyebrow">RESEARCH ENVIRONMENT / V1.0</div>
+        <div class="eyebrow">RESEARCH ENVIRONMENT / V1.1</div>
         <h1>Transforma ticks em <span>evidência.</span></h1>
-        <p>Importa históricos, mede distribuições e testa regras fixas sem confundir padrões passados com previsões futuras.</p>
+        <p>Obtém o histórico diretamente da Deriv, define a amostra e executa análises estatísticas e backtests cronológicos sobre os mesmos dados.</p>
       </section>
 
       <section class="panel import-panel">
-        <div class="section-head"><div><span class="step">01</span><h2>Fonte de dados</h2></div><span class="muted" id="fileInfo">Nenhum ficheiro carregado</span></div>
-        <div class="dropzone" id="dropzone">
-          <div class="upload-icon">↑</div><strong>Importar histórico de ticks</strong>
-          <span>Arrasta um ficheiro JSON ou CSV, ou seleciona-o abaixo.</span>
-          <label class="file-button">Escolher ficheiro<input id="fileInput" type="file" accept=".json,.csv,application/json,text/csv"></label>
+        <div class="section-head"><div><span class="step">01</span><h2>Histórico da Deriv</h2></div><span class="muted" id="fileInfo">Nenhum histórico carregado</span></div>
+        <div class="form-grid source-grid">
+          <label>Mercado / símbolo
+            <select id="symbol">
+              <option value="R_10">Volatility 10 Index (R_10)</option>
+              <option value="R_25">Volatility 25 Index (R_25)</option>
+              <option value="R_50">Volatility 50 Index (R_50)</option>
+              <option value="R_75">Volatility 75 Index (R_75)</option>
+              <option value="R_100">Volatility 100 Index (R_100)</option>
+              <option value="1HZ10V">Volatility 10 (1s) Index</option>
+              <option value="1HZ25V">Volatility 25 (1s) Index</option>
+              <option value="1HZ50V">Volatility 50 (1s) Index</option>
+              <option value="1HZ75V">Volatility 75 (1s) Index</option>
+              <option value="1HZ100V">Volatility 100 (1s) Index</option>
+            </select>
+          </label>
+          <label>Quantidade de ticks
+            <select id="historyCount">
+              <option value="100">100 ticks</option>
+              <option value="500">500 ticks</option>
+              <option value="1000" selected>1 000 ticks</option>
+              <option value="2500">2 500 ticks</option>
+              <option value="5000">5 000 ticks</option>
+            </select>
+          </label>
+          <label>App ID da Deriv
+            <input id="appId" type="number" min="1" max="999999" value="1089" inputmode="numeric">
+          </label>
+          <div class="fetch-cell"><button class="button primary full" id="fetchHistory">Carregar histórico da Deriv</button><span class="muted">Não é necessário carregar ficheiros nem inserir token de conta.</span></div>
         </div>
-        <div class="data-controls"><button class="button secondary" id="loadDemo">Carregar dados de demonstração</button><span class="muted">A demonstração é sintética, não é cotação real.</span></div>
-        <div class="preview-wrap hidden" id="previewWrap"><div class="section-head compact"><h3>Pré-visualização normalizada</h3><span id="tickCount" class="pill">0 ticks</span></div><div class="table-scroll"><table><thead><tr><th>#</th><th>Timestamp</th><th>Símbolo</th><th>Preço</th><th>Dígito</th><th>Paridade</th></tr></thead><tbody id="previewBody"></tbody></table></div></div>
+        <div class="connection-note" id="connectionNote">A ligação à API pública de ticks será feita diretamente do navegador através de WebSocket.</div>
+        <div class="preview-wrap hidden" id="previewWrap"><div class="section-head compact"><h3>Pré-visualização dos dados carregados</h3><span id="tickCount" class="pill">0 ticks</span></div><div class="table-scroll"><table><thead><tr><th>#</th><th>Timestamp</th><th>Símbolo</th><th>Preço</th><th>Dígito</th><th>Paridade</th></tr></thead><tbody id="previewBody"></tbody></table></div></div>
       </section>
 
       <section class="grid-two">
         <section class="panel">
           <div class="section-head"><div><span class="step">02</span><h2>Análise estatística</h2></div></div>
-          <p class="panel-description">Distribuição de dígitos, paridade, sequências e autocorrelação.</p>
+          <p class="panel-description">Distribuição de dígitos, paridade, sequências e autocorrelação na amostra carregada da Deriv.</p>
           <button class="button primary full" id="analyzeBtn" disabled>Executar análise</button>
-          <div id="analysisResult" class="result-area empty">Importa dados para começar.</div>
+          <div id="analysisResult" class="result-area empty">Carrega um histórico para começar.</div>
         </section>
         <section class="panel">
           <div class="section-head"><div><span class="step">03</span><h2>Backtest de paridade</h2></div></div>
@@ -53,14 +77,14 @@
       </section>
 
       <section class="panel export-panel">
-        <div class="section-head"><div><span class="step">04</span><h2>Exportar dados</h2></div></div>
-        <p class="panel-description">Guarda o histórico original normalizado para análise posterior ou partilha com outro ambiente de investigação.</p>
-        <div class="export-actions"><button class="button secondary" id="exportJson" disabled>Exportar JSON</button><button class="button secondary" id="exportCsv" disabled>Exportar CSV</button></div>
+        <div class="section-head"><div><span class="step">04</span><h2>Exportar histórico</h2></div></div>
+        <p class="panel-description">Exporta exatamente a amostra obtida da Deriv, incluindo preço, timestamp, símbolo, dígito e paridade, para reutilizar ou arquivar.</p>
+        <div class="export-actions"><button class="button secondary" id="exportJson" disabled>Exportar histórico JSON</button><button class="button secondary" id="exportCsv" disabled>Exportar histórico CSV</button></div>
       </section>
       <div id="toast" role="status" aria-live="polite"></div>
     </main>
-    <footer><span>X-ONE RESEARCH LAB</span><span>Ferramenta de investigação • Não é aconselhamento financeiro</span></footer>
+    <footer><span>X-ONE RESEARCH LAB</span><span>Investigação estatística • Não é aconselhamento financeiro</span></footer>
   </div>
-  <script src="/frontend/app.js"></script>
+  <script src="/app.js"></script>
 </body>
 </html>

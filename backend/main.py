@@ -1,11 +1,9 @@
 from pathlib import Path
 from typing import Any
-import json
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from backend.lab.ingestion import normalize_ticks
@@ -13,18 +11,16 @@ from backend.lab.analysis import analyze_ticks
 from backend.lab.backtest import backtest_parity
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-FRONTEND_DIR = BASE_DIR / "frontend"
 
-app = FastAPI(title="X-One Research Lab API", version="1.0.0")
-app.mount("/assets", StaticFiles(directory=FRONTEND_DIR), name="assets")
+app = FastAPI(title="X-One Research Lab API", version="1.1.0")
 
 
 class AnalyzeRequest(BaseModel):
-    ticks: list[dict[str, Any]] = Field(min_length=2)
+    ticks: list[dict[str, Any]] = Field(min_length=2, max_length=5000)
 
 
 class BacktestRequest(BaseModel):
-    ticks: list[dict[str, Any]] = Field(min_length=10)
+    ticks: list[dict[str, Any]] = Field(min_length=10, max_length=5000)
     sequence_length: int = Field(default=4, ge=1, le=30)
     stake: float = Field(default=1.0, gt=0, le=1_000_000)
     payout: float = Field(default=0.9, ge=0, le=100)
@@ -33,12 +29,22 @@ class BacktestRequest(BaseModel):
 
 @app.get("/")
 def index():
-    return FileResponse(FRONTEND_DIR / "index.html")
+    return FileResponse(BASE_DIR / "index.html")
+
+
+@app.get("/styles.css")
+def styles():
+    return FileResponse(BASE_DIR / "styles.css", media_type="text/css")
+
+
+@app.get("/app.js")
+def javascript():
+    return FileResponse(BASE_DIR / "app.js", media_type="application/javascript")
 
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "service": "X-One Research Lab", "version": "1.0.0"}
+    return {"status": "ok", "service": "X-One Research Lab", "version": "1.1.0"}
 
 
 @app.post("/api/analyze")

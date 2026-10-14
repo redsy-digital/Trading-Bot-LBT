@@ -1,77 +1,59 @@
-# X-One Research Lab — Web Edition
+# X-One Research Lab — Vercel Edition
 
-Laboratório local para importar histórico de ticks da Deriv, explorar estatísticas e testar regras fixas de forma cronológica.
+Laboratório web para pedir históricos de ticks diretamente à API pública da Deriv, executar análises estatísticas e testar regras fixas com a mesma amostra.
 
-## Arquitetura
+## Estrutura
 
-- `frontend/`: interface HTML, CSS e JavaScript sem framework.
-- `backend/`: API Python com FastAPI, motor estatístico e backtest modular.
-- Importação de JSON/CSV pelo navegador; os dados são enviados à API apenas quando se pede análise/backtest.
-- Exportação dos ticks normalizados em JSON e CSV.
+- `index.html` — página principal na raiz do repositório.
+- `styles.css` e `app.js` — interface e ligação direta ao WebSocket da Deriv.
+- `main.py` — ponto de entrada ASGI para o Vercel.
+- `backend/` — API FastAPI, análise estatística e backtest.
+- `pyproject.toml` — dependências e versão de Python suportada.
 
-> Esta ferramenta é para investigação estatística. Não prevê o próximo tick, não garante lucro e não replica necessariamente todos os detalhes de liquidação/payout dos contratos da Deriv. Resultados históricos não garantem resultados futuros.
+## Como funciona
 
-## Requisitos
+1. Escolhe o símbolo Deriv.
+2. Define a quantidade de ticks (100 a 5 000).
+3. Carrega em **Carregar histórico da Deriv**.
+4. O navegador pede o histórico através do WebSocket oficial da Deriv, sem upload manual e sem token de conta.
+5. A mesma amostra fica disponível para análise, backtest e exportação em JSON ou CSV.
 
-- Python 3.10+
-- Um navegador moderno
-- Internet apenas para instalar dependências Python (ou dependências já instaladas)
+O App ID predefinido é `1089`. Se a Deriv deixar de aceitar esse ID, usa um App ID válido da tua aplicação Deriv. O App ID não é um token de conta. Não coloques tokens privados nesta aplicação.
+
+## Publicar no Vercel
+
+1. Extrai o ZIP.
+2. Envia todo o conteúdo da pasta para um repositório GitHub.
+3. No Vercel, escolhe **Add New → Project** e importa esse repositório.
+4. Mantém a raiz do projeto como **Root Directory** (não escolhas `backend`).
+5. Deixa o Vercel detetar a aplicação Python/FastAPI e publica.
+6. Testa:
+   - `/` — interface;
+   - `/api/health` — estado da API;
+   - `/docs` — documentação da API.
+
+A aplicação usa Python 3.12 e o entrypoint ASGI `main:app`. O `index.html` fica na raiz como solicitado. Não é necessária base de dados para esta versão.
 
 ## Executar localmente
-
-Na pasta do projeto:
 
 ```bash
 python -m venv .venv
 ```
 
-Ativar o ambiente:
-
-**Windows**
-```bash
-.venv\\Scripts\\activate
-```
-
-**Linux/macOS**
-```bash
-source .venv/bin/activate
-```
-
-Instalar dependências e iniciar a API:
+Ativa o ambiente e instala dependências:
 
 ```bash
 pip install -r requirements.txt
-uvicorn backend.main:app --reload
+uvicorn main:app --reload
 ```
 
-Abrir no navegador:
+Abre `http://127.0.0.1:8000`.
 
-`http://127.0.0.1:8000`
+## Notas e limitações
 
-A API serve também a interface estática. O endpoint de saúde é `http://127.0.0.1:8000/api/health`.
-
-## Formatos aceites
-
-CSV com coluna de preço (`price`, `quote`, `close` ou `value`) e, opcionalmente, `epoch`/`time`/`timestamp`, `symbol` e `pip_size`.
-
-JSON:
-- lista de objetos com preços;
-- objeto com `ticks` ou `data`;
-- formato Deriv semelhante a `history.prices` e `history.times`;
-- lista simples de preços numéricos.
-
-O laboratório tenta inferir o último dígito a partir da precisão do preço. Quando o ficheiro inclui `pip_size`, esse valor tem prioridade.
-
-## O que é calculado
-
-- Distribuição de dígitos 0–9, paridade e frequência relativa.
-- Mudanças de preço, retornos e autocorrelação de lag 1.
-- Comprimentos de sequências consecutivas.
-- Probabilidades empíricas após sequências de paridade do mesmo tipo.
-- Backtest cronológico de regra fixa de paridade, com payout assumido, stake, P/L, drawdown e divisão temporal 60/20/20.
-
-## Limitações
-
-- A estratégia de paridade serve como exemplo de execução determinística, não como recomendação de aposta.
-- O payout introduzido no backtest é uma hipótese simplificada; confirme o payout efetivo no contrato e na plataforma.
-- A API local não é um serviço público. Para publicar online, o frontend pode ser hospedado estaticamente, mas a API Python tem de ser publicada num serviço que execute Python. Não coloque tokens de conta Deriv no frontend.
+- O histórico é pedido à Deriv pelo navegador. O backend recebe a amostra apenas quando pedes análise ou backtest.
+- O projeto não guarda dados entre sessões. Exporta JSON/CSV para arquivar o histórico.
+- A quantidade de histórico disponível pode variar conforme símbolo, disponibilidade da API e limites da Deriv.
+- A derivação do último dígito usa a precisão devolvida no preço e a informação de pip size quando estiver disponível.
+- O backtest é uma simulação estatística com payout configurável; não garante execução, lucro nem reprodução exata da liquidação de contratos.
+- Dados históricos não predizem o próximo tick.

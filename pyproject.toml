@@ -9,3 +9,6 @@ dependencies = [
   "pandas>=2.2,<3.0",
   "numpy>=1.26,<3.0",
 ]
+
+[tool.vercel]
+entrypoint = "backend.main:app"

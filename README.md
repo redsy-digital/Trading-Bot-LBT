@@ -64,3 +64,16 @@ Abre `http://127.0.0.1:8000`.
 - [Deriv New API — Ticks History](https://developers.deriv.com/docs/data/ticks-history/)
 - [Deriv API Comparison — Ticks History](https://developers.deriv.com/comparison/ticks-history/)
 - [Deriv Market Data Workflow](https://developers.deriv.com/docs/workflows/)
+
+
+## Diagnóstico de implantação Vercel
+
+O projeto define explicitamente `backend.main:app` como entrypoint FastAPI no `pyproject.toml`. Após substituir os ficheiros no GitHub, faz um novo deployment no Vercel e testa no mesmo domínio:
+
+- `/api/health`
+- `/health`
+- `/docs`
+
+As duas primeiras rotas devem devolver JSON com `"status":"ok"`. Se `/` abrir mas estas rotas derem 404/HTML, o Vercel provavelmente está a servir apenas os ficheiros estáticos ou o deployment não incluiu a configuração Python. Confirma o Root Directory, o Build/Deployment log e se o commit novo foi publicado.
+
+A ligação de histórico usa `wss://ws.derivws.com/websockets/v3?app_id=...`, com `ticks_history`, `count`, `end: "latest"`, `style: "ticks"`, `subscribe: 0` e `req_id`, conforme a documentação de histórico da Deriv.

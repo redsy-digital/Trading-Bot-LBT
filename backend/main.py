@@ -43,6 +43,7 @@ def javascript():
 
 
 @app.get("/api/health")
+@app.get("/health")
 def health():
     return {"status": "ok", "service": "X-One Research Lab", "version": "1.1.0"}
 

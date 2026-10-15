@@ -5,13 +5,26 @@ const $ = (id) => document.getElementById(id);
 
 async function checkApi() {
   try {
-    const r = await fetch("/api/health");
-    if (!r.ok) throw new Error();
+    const r = await fetch("/api/health", { cache: "no-store", headers: { "Accept": "application/json" } });
+    const contentType = r.headers.get("content-type") || "";
+    const bodyText = await r.text();
+    if (!r.ok) {
+      const detail = bodyText.slice(0, 180).replace(/\\s+/g, " ");
+      throw new Error(`HTTP ${r.status}${detail ? ` — ${detail}` : ""}`);
+    }
+    if (!contentType.includes("application/json")) {
+      throw new Error(`Resposta inesperada (${contentType || "tipo desconhecido"}). Verifica se o Vercel encaminha /api/health para o FastAPI.`);
+    }
+    const data = JSON.parse(bodyText);
+    if (data.status !== "ok") throw new Error("O endpoint respondeu, mas não confirmou status=ok.");
     $("apiStatus").textContent = "API ligada";
     $("status").classList.add("online");
-  } catch {
+  } catch (error) {
     $("apiStatus").textContent = "API indisponível";
-    toast("A API de análise não está disponível. Confirma a implantação no Vercel.");
+    $("status").classList.remove("online");
+    const detail = error?.message || "erro desconhecido";
+    toast(`API de análise indisponível: ${detail}`);
+    $("connectionNote").textContent = `API de análise: ${detail}. Testa diretamente /api/health no mesmo domínio do laboratório.`;
   }
 }
 checkApi();
@@ -97,7 +110,7 @@ function requestDerivHistory(symbol, count, appId) {
     let finished = false;
     const reqId = Date.now() % 2147483647;
     const timeoutMs = 25000;
-    const endpoint = `wss://ws.binaryws.com/websockets/v3?app_id=${encodeURIComponent(appId)}`;
+    const endpoint = `wss://ws.derivws.com/websockets/v3?app_id=${encodeURIComponent(appId)}`;
     const timer = setTimeout(
       () => finish(new Error(`A Deriv não respondeu ao pedido de histórico em ${timeoutMs / 1000}s. Verifica a ligação e tenta novamente.`)),
       timeoutMs

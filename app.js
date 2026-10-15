@@ -49,7 +49,7 @@ function normalizeDerivHistory(payload, symbol) {
   if (!history || !Array.isArray(history.prices) || !Array.isArray(history.times)) {
     throw new Error(payload?.error?.message || "A Deriv não devolveu um histórico válido.");
   }
-  const rawPipSize = Number(history.pip_size ?? payload?.tick?.pip_size);
+  const rawPipSize = Number(payload?.pip_size ?? history.pip_size ?? payload?.tick?.pip_size);
   // Deriv's pip_size is commonly a decimal-place count (e.g. 2 or 4),
   // while this app stores the actual price increment (e.g. 0.01 or 0.0001).
   const pipSize = Number.isFinite(rawPipSize) && rawPipSize > 0
@@ -95,41 +95,92 @@ function requestDerivHistory(symbol, count, appId) {
   return new Promise((resolve, reject) => {
     let socket;
     let finished = false;
-    const timer = setTimeout(() => finish(new Error("Tempo limite ao contactar a Deriv. Tenta novamente.")), 20000);
+    const reqId = Date.now() % 2147483647;
+    const timeoutMs = 25000;
+    const endpoint = `wss://ws.binaryws.com/websockets/v3?app_id=${encodeURIComponent(appId)}`;
+    const timer = setTimeout(
+      () => finish(new Error(`A Deriv não respondeu ao pedido de histórico em ${timeoutMs / 1000}s. Verifica a ligação e tenta novamente.`)),
+      timeoutMs
+    );
+
     function finish(error, result) {
       if (finished) return;
       finished = true;
       clearTimeout(timer);
-      try { if (socket && socket.readyState <= 1) socket.close(); } catch {}
-      error ? reject(error) : resolve(result);
+      try {
+        if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+          socket.close(1000, "history request complete");
+        }
+      } catch {}
+      if (error) reject(error);
+      else resolve(result);
     }
+
     try {
-      socket = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${encodeURIComponent(appId)}`);
-    } catch {
-      finish(new Error("Não foi possível abrir WebSocket. Confirma a ligação à internet e o App ID."));
+      socket = new WebSocket(endpoint);
+    } catch (error) {
+      finish(new Error(`Não foi possível iniciar o WebSocket da Deriv: ${error?.message || "erro desconhecido"}`));
       return;
     }
+
     socket.addEventListener("open", () => {
-      socket.send(JSON.stringify({
+      $("connectionNote").textContent = `Ligação estabelecida. Pedido único à API Deriv: ${symbol}, ${count} ticks (req_id ${reqId}).`;
+      const request = {
         ticks_history: symbol,
-        count,
         end: "latest",
+        count,
         style: "ticks",
-        adjust_start_time: 1
-      }));
+        subscribe: 0,
+        adjust_start_time: 1,
+        req_id: reqId
+      };
+      try {
+        socket.send(JSON.stringify(request));
+      } catch (error) {
+        finish(new Error(`A ligação abriu, mas não foi possível enviar o pedido: ${error?.message || "erro desconhecido"}`));
+      }
     });
+
     socket.addEventListener("message", event => {
       let data;
-      try { data = JSON.parse(event.data); } catch { return; }
-      if (data.error) {
-        finish(new Error(data.error.message || "Erro devolvido pela Deriv."));
+      try {
+        data = JSON.parse(event.data);
+      } catch {
+        finish(new Error("A Deriv enviou uma resposta que não está em formato JSON."));
         return;
       }
-      if (data.msg_type === "history" || data.history) finish(null, data);
+
+      // The New API does not guarantee echo_req, so correlate by req_id when present
+      // and use msg_type as the required response discriminator.
+      if (data.req_id != null && Number(data.req_id) !== reqId) return;
+
+      if (data.error) {
+        const code = data.error.code ? `${data.error.code}: ` : "";
+        finish(new Error(`Deriv API — ${code}${data.error.message || "pedido rejeitado"}`));
+        return;
+      }
+
+      if (data.msg_type === "history" || data.history) {
+        if (!data.history || !Array.isArray(data.history.prices) || !Array.isArray(data.history.times)) {
+          finish(new Error("A Deriv respondeu ao pedido, mas não incluiu history.prices e history.times como esperado pela New API."));
+          return;
+        }
+        if (data.history.prices.length !== data.history.times.length) {
+          finish(new Error(`Resposta inconsistente da Deriv: ${data.history.prices.length} preços e ${data.history.times.length} timestamps.`));
+          return;
+        }
+        finish(null, data);
+      }
     });
-    socket.addEventListener("error", () => finish(new Error("Falha na ligação WebSocket à Deriv. Verifica a rede ou tenta outro App ID.")));
-    socket.addEventListener("close", () => {
-      if (!finished) finish(new Error("A ligação à Deriv foi encerrada antes de receber o histórico."));
+
+    socket.addEventListener("error", () => {
+      finish(new Error("Falha de rede ao abrir o WebSocket da Deriv. Verifica a internet, o bloqueio de WebSocket no navegador e o App ID."));
+    });
+
+    socket.addEventListener("close", event => {
+      if (!finished) {
+        finish(new Error(`A ligação à Deriv fechou antes de devolver o histórico (código ${event.code}${event.reason ? `: ${event.reason}` : ""}).`));
+      }
     });
   });
 }
@@ -156,7 +207,7 @@ $("fetchHistory").addEventListener("click", async () => {
     setReady();
     toast(`Carregados ${received.length.toLocaleString()} ticks de ${symbol}.`);
   } catch (e) {
-    $("connectionNote").textContent = "Não foi possível carregar o histórico. Confirma a ligação e tenta novamente.";
+    $("connectionNote").textContent = `Falha no pedido de histórico: ${e.message || "erro desconhecido"}`;
     toast(e.message || "Falha ao carregar o histórico.");
   } finally {
     button.disabled = false; button.textContent = "Carregar histórico da Deriv";
